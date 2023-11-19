@@ -1,7 +1,12 @@
+use crate::{
+    errors::MarketplaceError, state::Listing, state::Marketplace, state::Whitelist, validate_nft,
+};
 use anchor_lang::prelude::*;
-use anchor_spl::{token::{Mint, TokenAccount, Token, Transfer as SplTransfer, transfer as spl_transfer}, metadata::{MetadataAccount, Metadata}, associated_token::AssociatedToken};
-use std::collections::BTreeMap;
-use crate::{errors::MarketplaceError, state::Marketplace, state::Whitelist, state::Listing, validate_nft};
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    metadata::{Metadata, MetadataAccount},
+    token::{transfer as spl_transfer, Mint, Token, TokenAccount, Transfer as SplTransfer},
+};
 
 #[derive(Accounts)]
 pub struct List<'info> {
@@ -55,20 +60,17 @@ pub struct List<'info> {
     metadata_program: Program<'info, Metadata>,
     associated_token_program: Program<'info, AssociatedToken>,
     token_program: Program<'info, Token>,
-    system_program: Program<'info, System>
+    system_program: Program<'info, System>,
 }
 
 impl<'info> List<'info> {
-    pub fn create_listing(&mut self, bumps: &BTreeMap<String, u8>, price: u64) -> Result<()> {
-        validate_nft!(
-            self.metadata.collection, 
-            self.collection_mint
-        );
+    pub fn create_listing(&mut self, bumps: &ListBumps, price: u64) -> Result<()> {
+        validate_nft!(self.metadata.collection, self.collection_mint);
         self.listing.maker = self.maker.key();
         self.listing.mint = self.maker_mint.key();
         self.listing.price = price;
-        self.listing.bump = *bumps.get("listing").ok_or(MarketplaceError::BumpError)?;
-        self.listing.auth_bump = *bumps.get("vault").ok_or(MarketplaceError::BumpError)?;
+        self.listing.bump = bumps.listing;
+        self.listing.auth_bump = bumps.vault;
         Ok(())
     }
 
@@ -76,13 +78,10 @@ impl<'info> List<'info> {
         let accounts = SplTransfer {
             from: self.maker_ata.to_account_info(),
             to: self.vault.to_account_info(),
-            authority: self.maker.to_account_info()
+            authority: self.maker.to_account_info(),
         };
 
-        let ctx = CpiContext::new(
-            self.token_program.to_account_info(),
-            accounts
-        );
+        let ctx = CpiContext::new(self.token_program.to_account_info(), accounts);
 
         spl_transfer(ctx, 1)
     }

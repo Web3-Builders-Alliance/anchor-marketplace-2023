@@ -1,7 +1,6 @@
+use crate::{state::Marketplace, state::Whitelist};
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
-use std::collections::BTreeMap;
-use crate::{errors::MarketplaceError, state::Marketplace, state::Whitelist};
 
 #[derive(Accounts)]
 pub struct WhitelistCollection<'info> {
@@ -22,12 +21,12 @@ pub struct WhitelistCollection<'info> {
         bump
     )]
     whitelist: Account<'info, Whitelist>,
-    system_program: Program<'info, System>
+    system_program: Program<'info, System>,
 }
 
 impl<'info> WhitelistCollection<'info> {
-    pub fn whitelist(&mut self, bumps: &BTreeMap<String, u8>) -> Result<()> {
-        self.whitelist.bump = *bumps.get("whitelist").ok_or(MarketplaceError::BumpError)?;
+    pub fn whitelist(&mut self, bumps: &WhitelistCollectionBumps) -> Result<()> {
+        self.whitelist.bump = bumps.whitelist;
         Ok(())
     }
 }
